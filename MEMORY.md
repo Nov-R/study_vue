@@ -8,8 +8,8 @@
 
 ## 学习阶段进度
 - [x] 阶段一：能跑就行 — router 基础、组件内逻辑、平铺路由
-- [ ] 阶段二：分离关注点 — Layout 布局、嵌套路由、懒加载、目录规范
-- [ ] 阶段三：状态管理 + 路由守卫 — pinia store、beforeEach、token
+- [x] 阶段二：分离关注点 — Layout 布局、嵌套路由、懒加载、目录规范
+- [x] 阶段三：状态管理 + 路由守卫 — pinia store、beforeEach、token
 - [ ] 阶段四：请求层封装 + 类型约束 — api 层、拦截器、TS interface
 - [ ] 阶段五：组合式函数 + 权限体系 — composables、自定义指令、动态路由
 

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '@/views/Login.vue'
+import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -17,6 +18,18 @@ const router = createRouter({
     },
     { path: '/:pathMatch(.*)*', component: () => import('@/views/NotFound.vue') },
   ],
+})
+
+router.beforeEach((to) => {
+  const auth = useAuthStore()
+
+  if (to.path !== '/login' && !auth.isLoggedIn) {
+    return '/login'
+  }
+
+  if (to.path === '/login' && auth.isLoggedIn) {
+    return '/home'
+  }
 })
 
 export default router

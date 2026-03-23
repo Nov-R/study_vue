@@ -218,4 +218,170 @@ component: () => import('@/views/Dashboard.vue')
 
 ---
 
+## 阶段三：状态管理 + 路由守卫
+
+### 这一步在解决什么问题
+
+阶段二解决了布局复用，但还有两个致命问题：
+1. **刷新丢状态** — 登录成功后刷新页面，啥都没了，因为登录状态只存在内存里
+2. **没有守卫** — 直接在地址栏输入 `/home` 就能进，完全不需要登录
+
+阶段三引入 **Pinia**（Vue 官方状态管理库）保存登录状态 + **`beforeEach` 路由守卫**拦截未登录访问。
+
+### 目录结构
+
+```
+src/
+  stores/
+    auth.ts              ← 新增：认证 store（token + localStorage）
+  layouts/
+    AppLayout.vue        ← 改动：新增退出登录按钮
+  views/
+    Login.vue            ← 改动：登录逻辑改用 store
+  router/index.ts        ← 改动：新增 beforeEach 守卫
+  main.ts                ← 改动：注册 Pinia
+```
+
+### 核心知识点
+
+#### 1. Pinia 基础
+
+Pinia 是 Vue 3 的官方状态管理库，替代 Vuex。核心概念只有三个：
+
+```
+state（数据）+ getters（计算属性）+ actions（方法）
+```
+
+注册到 app：
+
+```ts
+// main.ts
+import { createPinia } from 'pinia'
+
+app.use(createPinia())   // ← 必须在 app.use(router) 之前或同级
+app.use(router)
+```
+
+#### 2. 定义 Store（组合式风格）
+
+```ts
+// stores/auth.ts
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+
+export const useAuthStore = defineStore('auth', () => {
+  // state — 用 ref
+  const token = ref(localStorage.getItem('token') || '')
+
+  // getter — 用 computed
+  const isLoggedIn = computed(() => !!token.value)
+
+  // action — 普通函数
+  function login(username: string, password: string): boolean {
+    if (username === 'admin' && password === '123456') {
+      token.value = 'fake-token-123'
+      localStorage.setItem('token', token.value)
+      return true
+    }
+    return false
+  }
+
+  function logout() {
+    token.value = ''
+    localStorage.removeItem('token')
+  }
+
+  return { token, isLoggedIn, login, logout }
+})
+```
+
+关键点：
+- `defineStore('auth', () => { ... })` — 组合式写法，和 `<script setup>` 风格一致
+- `localStorage` 做持久化 — 刷新页面后 token 还在，不会丢失登录状态
+- store 里 `ref` = state，`computed` = getter，普通函数 = action
+
+#### 3. 在组件中使用 Store
+
+```ts
+// Login.vue
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+
+function handleLogin() {
+  if (auth.login(username.value, password.value)) {
+    router.push('/home')        // 登录成功 → 跳转
+  } else {
+    error.value = '用户名或密码错误'
+  }
+}
+```
+
+登录逻辑从组件移到了 store，组件只负责调用和跳转。
+
+#### 4. 路由守卫 `beforeEach`
+
+```ts
+// router/index.ts
+import { useAuthStore } from '@/stores/auth'
+
+router.beforeEach((to) => {
+  const auth = useAuthStore()
+
+  // 未登录 → 访问非登录页 → 拦截到登录页
+  if (to.path !== '/login' && !auth.isLoggedIn) {
+    return '/login'
+  }
+
+  // 已登录 → 访问登录页 → 跳转到首页
+  if (to.path === '/login' && auth.isLoggedIn) {
+    return '/home'
+  }
+})
+```
+
+`beforeEach` 在**每次导航前**执行：
+- 返回一个路径字符串 = 重定向到该路径
+- 不返回（`undefined`）= 放行
+- 注意 `useAuthStore()` 必须在回调里调用，不能放外面（因为 Pinia 还没注册完）
+
+#### 5. 退出登录
+
+```vue
+<!-- AppLayout.vue -->
+<button @click="handleLogout">退出登录</button>
+
+<script setup lang="ts">
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+
+function handleLogout() {
+  auth.logout()          // 清除 token
+  router.push('/login')  // 跳回登录页
+}
+</script>
+```
+
+### 验证方式
+
+1. `npm run dev` 启动项目
+2. 直接访问 `/home` → 被拦截到 `/login` ✅
+3. 用 `admin` / `123456` 登录 → 进入首页 ✅
+4. 刷新页面 → 状态保持，不用重新登录 ✅
+5. 点击"退出登录" → 跳回登录页 ✅
+6. 退出后再访问 `/home` → 被拦截 ✅
+
+### ⚠️ 此阶段存在的问题
+
+| 问题 | 表现 | 哪个阶段解决 |
+|------|------|-------------|
+| 登录逻辑硬编码 | 用户名密码写死在 store 里，没有 API 调用 | 阶段四 |
+| 没有请求拦截器 | token 需要手动塞到每个请求里 | 阶段四 |
+| 没有类型约束 | 请求/响应没有 TS 类型定义 | 阶段四 |
+
+> **下一步预告（阶段四）**：封装 axios 请求层，用拦截器自动携带 token，用 TS interface 约束请求和响应。
+
+---
+
 <!-- 后续阶段将追加在此处 -->

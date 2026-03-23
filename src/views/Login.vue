@@ -19,14 +19,16 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const auth = useAuthStore()
 const username = ref('')
 const password = ref('')
 const error = ref('')
 
 function handleLogin() {
-  if (username.value === 'admin' && password.value === '123456') {
+  if (auth.login(username.value, password.value)) {
     router.push('/home')
   } else {
     error.value = '用户名或密码错误'
