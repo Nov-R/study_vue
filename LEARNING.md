@@ -128,4 +128,94 @@ npm run dev
 
 ---
 
+## 阶段二：分离关注点
+
+### 这一步在解决什么问题
+
+阶段一的导航逻辑散落在每个页面（`Home.vue` 有 nav，`Dashboard.vue` 有"返回"链接）。
+阶段二引入 **Layout 组件 + 嵌套路由**，让导航只写一次，子页面只关心自己的内容。
+同时引入**懒加载**，首屏只加载登录页，其他页面按需加载。
+
+### 目录结构
+
+```
+src/
+  layouts/
+    AppLayout.vue        ← 新增：导航栏 + <router-view>，登录后的页面共享此布局
+  views/
+    Login.vue            ← 不变
+    Home.vue             ← 简化：去掉导航链接
+    Dashboard.vue        ← 简化：去掉"返回首页"
+    Settings.vue         ← 简化：去掉"返回首页"
+    NotFound.vue         ← 不变
+  router/index.ts        ← 路由改为嵌套结构 + 懒加载
+```
+
+### 核心知识点
+
+#### 1. Layout 组件
+
+```vue
+<!-- layouts/AppLayout.vue -->
+<template>
+  <div>
+    <nav>
+      <router-link to="/home">首页</router-link> |
+      <router-link to="/dashboard">仪表盘</router-link> |
+      <router-link to="/settings">设置</router-link>
+    </nav>
+    <router-view />   <!-- 子路由组件渲染在这里 -->
+  </div>
+</template>
+```
+
+`AppLayout` 本身只负责"外壳"：导航栏 + 内容区占位符。
+子页面完全不需要知道导航的存在。
+
+#### 2. 嵌套路由
+
+```ts
+// router/index.ts
+{
+  path: '/',
+  component: () => import('@/layouts/AppLayout.vue'),  // 父：Layout
+  children: [
+    { path: 'home',      component: () => import('@/views/Home.vue') },
+    { path: 'dashboard', component: () => import('@/views/Dashboard.vue') },
+    { path: 'settings',  component: () => import('@/views/Settings.vue') },
+  ],
+},
+```
+
+嵌套路由渲染规则：
+- 访问 `/home` → `AppLayout` 渲染在 `App.vue` 的 `<router-view>`
+- `Home` 渲染在 `AppLayout` 的 `<router-view>`
+- 每层路由对应每层组件里的 `<router-view>`，**缺一层就断一层**
+
+`Login` 和 `NotFound` 保持顶层路由，不受 Layout 包裹（登录页不需要导航栏）。
+
+#### 3. 懒加载
+
+```ts
+// 阶段一：静态导入（打包时全部合并到一个 chunk）
+import Dashboard from '@/views/Dashboard.vue'
+
+// 阶段二：懒加载（打包时拆分，访问该路由时才加载）
+component: () => import('@/views/Dashboard.vue')
+```
+
+好处：首屏只加载 `Login`，进入后台后才按需加载各页面，减少首屏体积。
+
+### ⚠️ 此阶段存在的问题
+
+| 问题 | 表现 | 哪个阶段解决 |
+|------|------|-------------|
+| 登录状态没有保存 | 刷新页面 → 状态丢失 | 阶段三 |
+| 没有路由守卫 | 直接访问 `/home` 无需登录 | 阶段三 |
+| 登录逻辑硬编码 | 用户名密码写死在组件里 | 阶段四 |
+
+> **下一步预告（阶段三）**：引入 Pinia 保存登录状态，用 `beforeEach` 路由守卫拦截未登录访问。
+
+---
+
 <!-- 后续阶段将追加在此处 -->
