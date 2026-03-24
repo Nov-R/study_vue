@@ -1,6 +1,4 @@
 <template>
-  <div>
-    <h1>设置</h1>
-    <p>这里是设置页面</p>
-  </div>
+    <h1>Settings</h1>
+    <p>这是Settings页面</p>
 </template>

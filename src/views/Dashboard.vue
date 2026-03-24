@@ -1,6 +1,4 @@
 <template>
-  <div>
-    <h1>仪表盘</h1>
-    <p>这里是仪表盘页面</p>
-  </div>
+    <h1>Dashboard</h1>
+    <p>这是Dashboard页面</p>
 </template>
