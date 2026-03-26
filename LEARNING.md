@@ -384,4 +384,228 @@ function handleLogout() {
 
 ---
 
+## 阶段四：请求层封装 + 类型约束
+
+### 这一步在解决什么问题
+
+阶段三的登录逻辑直接写死在 store 里（`if username === 'admin'`），没有 API 层。
+真实项目中，前端通过 HTTP 请求与后端交互，需要：
+1. **统一的请求工具** — 不能每个地方都手动写 `axios.get()`，token、错误处理会散落各处
+2. **类型约束** — 请求参数和响应数据没有 TS 类型，拼错字段不会报错
+3. **关注点分离** — 组件/store 不应该知道 HTTP 细节，只管调函数拿数据
+
+### 目录结构
+
+```
+src/
+  types/
+    api.ts               ← 新增：TS 类型定义（请求/响应接口）
+  utils/
+    request.ts           ← 新增：axios 实例 + 拦截器
+  api/
+    auth.ts              ← 新增：认证相关 API 函数
+  stores/
+    auth.ts              ← 改动：login 改为 async，调用 API 层
+  views/
+    Login.vue            ← 改动：handleLogin 改为 async
+```
+
+### 核心知识点
+
+#### 1. TS 类型定义
+
+```ts
+// types/api.ts
+
+// 通用 API 响应结构（泛型）
+export interface ApiResponse<T = unknown> {
+    code: number
+    message: string
+    data: T
+}
+
+// 登录请求参数
+export interface LoginRequest {
+    username: string
+    password: string
+}
+
+// 登录响应数据
+export interface LoginResponse {
+    token: string
+}
+```
+
+关键点：
+- `ApiResponse<T>` 是**泛型接口** — `T` 是占位符，使用时传入具体类型
+- `ApiResponse<LoginResponse>` → `data` 的类型就是 `{ token: string }`
+- `ApiResponse<unknown>` → `data` 的类型是 `unknown`（不确定时的默认值）
+- 这样所有 API 共享同一个外壳结构，只有 `data` 的类型不同
+
+#### 2. Axios 实例 + 拦截器
+
+```ts
+// utils/request.ts
+import axios from 'axios'
+
+const request = axios.create({
+    baseURL: '/api',       // 所有请求自动加前缀 /api
+    timeout: 5000,         // 超时 5 秒
+})
+
+// 请求拦截器：发出去之前拦截，自动加 token
+request.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token')
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+})
+
+// 响应拦截器：收到响应后拦截，统一处理
+request.interceptors.response.use(
+    (response) => {
+        const res = response.data as ApiResponse
+        if (res.code !== 0) {
+            return Promise.reject(res)   // 业务错误 → 抛出
+        }
+        return res as any               // 成功 → 解包返回
+    },
+    (error) => {
+        if (error.response?.status === 401) {
+            localStorage.removeItem('token')
+            window.location.href = '/login'   // token 过期 → 强制登出
+        }
+        return Promise.reject(error)
+    }
+)
+
+export default request
+```
+
+拦截器执行流程：
+
+```
+发起请求 → [请求拦截器: 加 token] → 服务器 → [响应拦截器: 解包/错误处理] → 业务代码
+```
+
+两个拦截器各司其职：
+- **请求拦截器** — 统一加 `Authorization` 头，不用每个 API 手动传 token
+- **响应拦截器** — 成功时解包 `response.data`，失败时统一处理（401 自动登出）
+
+#### 3. API 层
+
+```ts
+// api/auth.ts
+import type { ApiResponse, LoginRequest, LoginResponse } from '@/types/api'
+
+// 当前：模拟后端响应（setTimeout 模拟网络延迟）
+export function loginApi(data: LoginRequest): Promise<ApiResponse<LoginResponse>> {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            if (data.username === 'admin' && data.password === '12345') {
+                resolve({ code: 0, message: 'ok', data: { token: 'fake-token' } })
+            } else {
+                reject({ code: 1, message: '用户名或密码错误', data: null })
+            }
+        }, 500)
+    })
+}
+
+// 有真实后端后，只需改成：
+//   import request from '@/utils/request'
+//   export const loginApi = (data: LoginRequest) =>
+//       request.post<any, ApiResponse<LoginResponse>>('/auth/login', data)
+```
+
+API 层的价值：
+- 组件和 store 只调 `loginApi()`，不关心底层是 axios、fetch 还是 mock
+- 切换真实后端时，**只改 API 文件**，store 和组件完全不动
+- 函数签名有 TS 类型约束，传错参数编译器直接报错
+
+#### 4. Store 改造（async/await）
+
+```ts
+// stores/auth.ts — 对比阶段三的变化
+import { loginApi } from '@/api/auth'
+
+// 阶段三：同步，硬编码
+function login(username: string, password: string): boolean {
+    if (username === 'admin' && password === '12345') { ... }
+}
+
+// 阶段四：异步，调用 API
+async function login(username: string, password: string): Promise<boolean> {
+    try {
+        const res = await loginApi({ username, password })
+        token.value = res.data.token
+        localStorage.setItem('token', token.value)
+        return true
+    } catch {
+        return false
+    }
+}
+```
+
+变化点：
+- `function` → `async function`，返回值 `boolean` → `Promise<boolean>`
+- 硬编码判断 → `await loginApi()`，验证逻辑交给后端（当前是 mock）
+- `try/catch` 处理 API 失败
+
+#### 5. 组件改造
+
+```ts
+// Login.vue
+async function handleLogin() {
+    const success = await auth.login(username.value, password.value)
+    if (success) {
+        router.push('/home')
+    } else {
+        error.value = '用户名或密码错误'
+    }
+}
+```
+
+组件几乎没变，只加了 `async/await` — 这就是分层的好处。
+
+### 分层架构总览
+
+```
+组件 (Login.vue)
+  ↓ 调用
+Store (auth.ts)
+  ↓ 调用
+API 层 (api/auth.ts)        ← 定义"调什么接口"
+  ↓ 使用
+请求工具 (utils/request.ts)  ← 定义"怎么发请求"
+  ↓ 底层
+axios
+```
+
+每一层只关心自己的事：
+- **组件** — 用户交互、页面渲染
+- **Store** — 状态管理、业务逻辑
+- **API 层** — 定义接口地址和参数
+- **请求工具** — 统一配置（baseURL、token、错误处理）
+
+### 验证方式
+
+1. `npm run dev` 启动项目
+2. 用 `admin` / `12345` 登录 → 有 0.5 秒延迟（模拟网络请求）→ 成功进入首页 ✅
+3. 用错误密码登录 → 显示错误提示 ✅
+4. 刷新页面 → 状态保持 ✅
+5. `npx vue-tsc --noEmit` → 类型检查通过 ✅
+
+### ⚠️ 此阶段存在的问题
+
+| 问题 | 表现 | 哪个阶段解决 |
+|------|------|-------------|
+| 没有权限体系 | 所有登录用户看到一样的页面和菜单 | 阶段五 |
+| 没有动态路由 | 路由表写死，不能根据权限动态加载 | 阶段五 |
+| 没有可复用的业务逻辑封装 | 类似逻辑在多个组件中重复 | 阶段五 |
+
+> **下一步预告（阶段五）**：引入组合式函数（composables）封装可复用逻辑，用自定义指令控制按钮级权限，用动态路由实现菜单级权限。
+
+---
+
 <!-- 后续阶段将追加在此处 -->

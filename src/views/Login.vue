@@ -18,8 +18,9 @@
     const error = ref('')
     const username = ref('')
     const password = ref('')
-    function handleLogin() {
-        if(auth.login(username.value, password.value)){
+    async function handleLogin() {
+        const success = await auth.login(username.value, password.value)
+        if (success) {
             router.push('/home')
         } else {
             error.value = '用户名或密码错误'

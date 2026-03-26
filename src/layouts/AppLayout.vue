@@ -1,5 +1,4 @@
 <template>
-    123132
     <AppNav />
     <router-view></router-view>
 </template>

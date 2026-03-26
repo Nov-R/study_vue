@@ -1,19 +1,26 @@
-import {defineStore} from 'pinia'
-import {ref, computed} from 'vue'
-export const useAuthStore = defineStore('auth', ()=>{
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import { loginApi } from '@/api/auth'
+
+export const useAuthStore = defineStore('auth', () => {
     const token = ref(localStorage.getItem('token') || '')
-    const isLoggedIn = computed(()=> !!token.value)
-    function login(username:string, password:string):boolean {
-        if(username === 'admin' && password === '12345') {
-            token.value = 'faketoken-nov-rain'
+    const isLoggedIn = computed(() => !!token.value)
+
+    async function login(username: string, password: string): Promise<boolean> {
+        try {
+            const res = await loginApi({ username, password })
+            token.value = res.data.token
             localStorage.setItem('token', token.value)
             return true
-        } 
-        return false
+        } catch {
+            return false
+        }
     }
-    function logout(){
+
+    function logout() {
         token.value = ''
         localStorage.removeItem('token')
     }
-    return {token, isLoggedIn, login, logout}
+
+    return { token, isLoggedIn, login, logout }
 })
