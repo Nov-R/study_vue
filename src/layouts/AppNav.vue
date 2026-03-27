@@ -3,6 +3,7 @@
         <router-link to="/home">Home</router-link> |
         <router-link to="/settings">Settings</router-link> |
         <router-link to="/dashboard">Dashboard</router-link> |
+        <router-link to="/news">News</router-link> |
         <button @click="handleLogout">登出</button>
     </nav>
 </template>
