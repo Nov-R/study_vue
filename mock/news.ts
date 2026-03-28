@@ -1,3 +1,5 @@
+import type { MockRoute } from './index'
+
 // 模拟后端新闻相关接口
 const newsList = [
     {
@@ -22,21 +24,21 @@ const newsList = [
 
 export default [
     {
-        url: '/api/news/list',
+        url: '/api/news',
         method: 'get',
         handler() {
             return { code: 0, message: 'ok', data: newsList }
         },
     },
     {
-        url: '/api/news/detail',
+        url: '/api/news/:id',
         method: 'get',
-        handler(_body: any, query?: Record<string, string>) {
-            const item = newsList.find((n) => n.id === Number(query?.id))
+        handler(_body: any, _query: Record<string, string>, params: Record<string, string>) {
+            const item = newsList.find((n) => n.id === Number(params.id))
             if (item) {
                 return { code: 0, message: 'ok', data: item }
             }
             return { code: 1, message: '新闻不存在', data: null }
         },
     },
-]
+] satisfies MockRoute[]

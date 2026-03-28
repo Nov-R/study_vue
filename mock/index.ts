@@ -5,10 +5,10 @@ import { URL } from 'node:url'
 import authMocks from './auth'
 import newsMocks from './news'
 
-interface MockRoute {
+export interface MockRoute {
     url: string
     method: string
-    handler: (body: any, query?: Record<string, string>) => any
+    handler: (body: any, query: Record<string, string>, params: Record<string, string>) => any
 }
 
 const mockRoutes: MockRoute[] = [...authMocks, ...newsMocks]
@@ -27,28 +27,48 @@ function parseBody(req: Connect.IncomingMessage): Promise<any> {
     })
 }
 
-function parseQuery(req: Connect.IncomingMessage): Record<string, string> {
-    const url = new URL(req.originalUrl ?? '', 'http://localhost')
-    return Object.fromEntries(url.searchParams)
+// 将 '/api/news/:id' 转为正则，提取路径参数
+function pathToRegex(pattern: string) {
+    const paramNames: string[] = []
+    const regexStr = pattern.replace(/:(\w+)/g, (_, name) => {
+        paramNames.push(name)
+        return '([^/]+)'
+    })
+    return { regex: new RegExp(`^${regexStr}$`), paramNames }
+}
+
+function matchRoute(pathname: string, method: string) {
+    for (const route of mockRoutes) {
+        if (route.method !== method) continue
+        const { regex, paramNames } = pathToRegex(route.url)
+        const match = pathname.match(regex)
+        if (match) {
+            const params: Record<string, string> = {}
+            paramNames.forEach((name, i) => {
+                params[name] = match[i + 1]
+            })
+            return { route, params }
+        }
+    }
+    return null
 }
 
 export function createMockPlugin(): Plugin {
     return {
         name: 'mock-server',
         configureServer(server) {
-            for (const route of mockRoutes) {
-                server.middlewares.use(route.url, async (req, res, next) => {
-                    if (req.method?.toLowerCase() !== route.method) {
-                        return next()
-                    }
-                    const body = await parseBody(req)
-                    const query = parseQuery(req)
-                    const result = route.handler(body, query)
+            server.middlewares.use(async (req, res, next) => {
+                const url = new URL(req.originalUrl ?? '', 'http://localhost')
+                const matched = matchRoute(url.pathname, req.method?.toLowerCase() ?? '')
+                if (!matched) return next()
 
-                    res.setHeader('Content-Type', 'application/json')
-                    res.end(JSON.stringify(result))
-                })
-            }
+                const body = await parseBody(req)
+                const query = Object.fromEntries(url.searchParams)
+                const result = matched.route.handler(body, query, matched.params)
+
+                res.setHeader('Content-Type', 'application/json')
+                res.end(JSON.stringify(result))
+            })
         },
     }
 }

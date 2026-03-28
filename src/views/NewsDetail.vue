@@ -9,25 +9,17 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import request from '@/utils/request'
-import type { ApiResponse } from '@/types/api'
-
-interface NewsDetail {
-    id: number
-    title: string
-    content: string
-    date: string
-}
+import { getNewsDetailApi, type NewsDetailItem } from '@/api/news'
 
 const route = useRoute()
-const detail = ref<NewsDetail | null>(null)
+const detail = ref<NewsDetailItem | null>(null)
 
 watch(
     () => route.params.id,
     async (id) => {
         if (!id) return
-        const res = await request.get<ApiResponse<NewsDetail>>('/news/detail', { params: { id } })
-        detail.value = res.data.data
+        const { data } = await getNewsDetailApi(id)
+        detail.value = data
     },
     { immediate: true }
 )

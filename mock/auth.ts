@@ -1,3 +1,5 @@
+import type { MockRoute } from './index'
+
 // 模拟后端 auth 相关接口
 export default [
     {
@@ -10,4 +12,4 @@ export default [
             return { code: 1, message: '用户名或密码错误', data: null }
         },
     },
-]
+] satisfies MockRoute[]

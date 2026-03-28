@@ -11,19 +11,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import request from '@/utils/request'
-import type { ApiResponse } from '@/types/api'
-
-interface NewsItem {
-    id: number
-    title: string
-    date: string
-}
+import { getNewsListApi, type NewsItem } from '@/api/news'
 
 const newsList = ref<NewsItem[]>([])
 
 onMounted(async () => {
-    const res = await request.get<ApiResponse<NewsItem[]>>('/news/list')
-    newsList.value = res.data.data
+    const { data } = await getNewsListApi()
+    newsList.value = data
 })
 </script>
