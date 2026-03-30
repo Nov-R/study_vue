@@ -6,7 +6,7 @@
             <span style="margin-left: 8px; color: #999;">{{ item.date }}</span>
         </li>
     </ul>
-    <router-view />
+
 </template>
 
 <script setup lang="ts">

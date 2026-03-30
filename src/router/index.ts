@@ -30,12 +30,10 @@ const router = createRouter({
                 {
                     path: 'news',
                     component: () => import('@/views/NewsList.vue'),
-                    children: [
-                        {
-                            path: ':id',
-                            component: () => import('@/views/NewsDetail.vue')
-                        }
-                    ]
+                },
+                {
+                    path: 'news/:id',
+                    component: () => import('@/views/NewsDetail.vue'),
                 },
             ]
 

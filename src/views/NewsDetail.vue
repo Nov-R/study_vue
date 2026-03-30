@@ -4,6 +4,7 @@
         <p style="color: #999;">{{ detail.date }}</p>
         <p>{{ detail.content }}</p>
     </div>
+    <router-link to="/news">返回新闻列表</router-link>
 </template>
 
 <script setup lang="ts">
