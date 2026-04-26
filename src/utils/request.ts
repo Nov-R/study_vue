@@ -1,5 +1,4 @@
 import axios from 'axios'
-import type { ApiResponse } from '@/types/api'
 
 const request = axios.create({
     baseURL: '/api',
@@ -15,22 +14,21 @@ request.interceptors.request.use((config) => {
     return config
 })
 
-// 响应拦截器：解包数据 + 错误处理
+// 响应拦截器：直接解包到 data；401 统一清登录态并跳转
 request.interceptors.response.use(
-    (response) => {
-        const res = response.data as ApiResponse
-        if (res.code !== 0) {
-            return Promise.reject(res)
-        }
-        return res as any
-    },
-    (error) => {
+    (response) => response.data,
+    async (error) => {
         if (error.response?.status === 401) {
-            localStorage.removeItem('token')
-            window.location.href = '/login'
+            // 动态 import 避免与 store/router 形成循环依赖
+            const [{ useAuthStore }, { default: router }] = await Promise.all([
+                import('@/stores/auth'),
+                import('@/router'),
+            ])
+            useAuthStore().logout()
+            router.push('/login')
         }
         return Promise.reject(error)
-    }
+    },
 )
 
 export default request

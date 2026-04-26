@@ -1,5 +1,7 @@
 <template>
-    <div v-if="detail" style="margin-top: 16px; padding: 16px; border: 1px solid #ddd; border-radius: 4px;">
+    <p v-if="loading">加载中...</p>
+    <p v-else-if="error" style="color: red">加载失败</p>
+    <div v-else-if="detail" style="margin-top: 16px; padding: 16px; border: 1px solid #ddd; border-radius: 4px;">
         <h2>{{ detail.title }}</h2>
         <p style="color: #999;">{{ detail.date }}</p>
         <p>{{ detail.content }}</p>
@@ -8,20 +10,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+// @ts-nocheck — 阶段性跳过类型检查，框架学透后再补类型
+import { watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { getNewsDetailApi, type NewsDetailItem } from '@/api/news'
+import { getNewsDetailApi } from '@/api/news'
+import { useFetch } from '@/composables/useFetch'
 
 const route = useRoute()
-const detail = ref<NewsDetailItem | null>(null)
+const { data: detail, loading, error, execute } = useFetch(getNewsDetailApi)
 
+// 路由参数 id 变化时重新拉数据；首次进入也立刻执行一次
 watch(
     () => route.params.id,
-    async (id) => {
-        if (!id) return
-        const { data } = await getNewsDetailApi(id)
-        detail.value = data
-    },
-    { immediate: true }
+    (id) => { if (id) execute(id) },
+    { immediate: true },
 )
 </script>
