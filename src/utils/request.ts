@@ -25,7 +25,7 @@ request.interceptors.response.use(
                 import('@/router'),
             ])
             useAuthStore().logout()
-            router.push('/login')
+            router.push({ name: 'login' })
         }
         return Promise.reject(error)
     },

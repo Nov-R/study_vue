@@ -1,7 +1,7 @@
 <template>
     <h1>新闻列表</h1>
     <p v-if="loading">加载中...</p>
-    <p v-else-if="error" style="color: red">加载失败</p>
+    <p v-else-if="error" style="color: red">加载失败：{{ error.message ?? error }}</p>
     <ul v-else>
         <NewsItem v-for="item in newsList" :key="item.id" :item="item" />
     </ul>

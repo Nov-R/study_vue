@@ -1,7 +1,9 @@
 <template>
-    <li>
-        <router-link :to="`/news/${item.id}`">{{ item.title }}</router-link>
-        <span style="margin-left: 8px; color: #999;">{{ item.date }}</span>
+    <li class="news-item">
+        <router-link :to="{ name: 'news-detail', params: { id: item.id } }">
+            {{ item.title }}
+        </router-link>
+        <span class="news-item__date">{{ item.date }}</span>
     </li>
 </template>
 
@@ -12,3 +14,11 @@ defineProps({
     item: { type: Object, required: true },
 })
 </script>
+
+<style scoped>
+/* scoped 样式：只对当前组件生效，不会污染全局 */
+.news-item__date {
+    margin-left: 8px;
+    color: #999;
+}
+</style>

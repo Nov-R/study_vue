@@ -1,54 +1,80 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+
+const routes = [
+    // 公开路由：无需登录，不挂主布局
+    {
+        path: '/login',
+        name: 'login',
+        component: () => import('@/views/Login.vue'),
+        meta: { public: true },
+    },
+
+    // 受保护路由：需登录，统一挂 AppLayout 主布局
+    {
+        path: '/',
+        component: () => import('@/layouts/AppLayout.vue'),
+        meta: { requiresAuth: true },
+        // 访问 / 时直接跳到 home，不再有"先跳 login 再被救回"的二次重定向
+        redirect: { name: 'home' },
+        children: [
+            {
+                path: 'home',
+                name: 'home',
+                component: () => import('@/views/Home.vue'),
+            },
+            {
+                path: 'dashboard',
+                name: 'dashboard',
+                component: () => import('@/views/Dashboard.vue'),
+            },
+            {
+                path: 'settings',
+                name: 'settings',
+                component: () => import('@/views/Settings.vue'),
+            },
+            {
+                path: 'news',
+                name: 'news-list',
+                component: () => import('@/views/NewsList.vue'),
+            },
+            {
+                path: 'news/:id',
+                name: 'news-detail',
+                component: () => import('@/views/NewsDetail.vue'),
+                // props: true 把路由参数 :id 作为 prop 传给组件，
+                // 组件不再依赖 useRoute()，更易复用与测试
+                props: true,
+            },
+        ],
+    },
+
+    // 404 兜底：放最后，匹配所有未命中的路径
+    {
+        path: '/:pathMatch(.*)*',
+        name: 'not-found',
+        component: () => import('@/views/NotFound.vue'),
+    },
+]
+
 const router = createRouter({
     history: createWebHistory(),
-    routes: [
-        {
-            path: '/',
-            redirect: '/login'
-        },
-        {
-            path: '/login',
-            component: () => import('@/views/Login.vue')
-        },
-        {
-            path: '/',
-            component: () => import('@/layouts/AppLayout.vue'),
-            children: [
-                {
-                    path: 'home',
-                    component: () => import('@/views/Home.vue')
-                },
-                {
-                    path: 'settings',
-                    component: () => import('@/views/Settings.vue')
-                },
-                {
-                    path: 'dashboard',
-                    component: () => import('@/views/Dashboard.vue')
-                },
-                {
-                    path: 'news',
-                    component: () => import('@/views/NewsList.vue'),
-                },
-                {
-                    path: 'news/:id',
-                    component: () => import('@/views/NewsDetail.vue'),
-                },
-            ]
-
-        },
-        {
-            path: '/:pathMatch(.*)*',
-            component: () => import('@/views/NotFound.vue')
-        }
-    ]
+    routes,
 })
+
+// 全局前置守卫：基于 meta 判断认证，而不是硬编码路径
 router.beforeEach((to) => {
     const auth = useAuthStore()
-    if (!auth.isLoggedIn && to.path !== '/login') return '/login'
-    if (auth.isLoggedIn && to.path === '/login') return '/home'
-})
 
+    // 已登录用户访问登录页 → 直接去首页
+    if (to.name === 'login' && auth.isLoggedIn) {
+        return { name: 'home' }
+    }
+
+    // 未登录访问需要认证的路由 → 去登录页
+    if (to.meta.requiresAuth && !auth.isLoggedIn) {
+        return { name: 'login' }
+    }
+})
 
 export default router
