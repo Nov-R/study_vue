@@ -6,7 +6,7 @@ const routes = [
     {
         path: '/login',
         name: 'login',
-        component: () => import('@/views/Login.vue'),
+        component: () => import('@/views/auth/Login.vue'),
         meta: { public: true },
     },
 
@@ -21,31 +21,35 @@ const routes = [
             {
                 path: 'home',
                 name: 'home',
-                component: () => import('@/views/Home.vue'),
+                component: () => import('@/views/home/Home.vue'),
             },
             {
                 path: 'dashboard',
                 name: 'dashboard',
-                component: () => import('@/views/Dashboard.vue'),
+                component: () => import('@/views/dashboard/Dashboard.vue'),
             },
             {
                 path: 'settings',
                 name: 'settings',
-                component: () => import('@/views/Settings.vue'),
+                component: () => import('@/views/settings/Settings.vue'),
             },
             {
                 path: 'news',
                 name: 'news-list',
-                component: () => import('@/views/NewsList.vue'),
+                component: () => import('@/views/news/NewsList.vue'),
+                children:[
+                    {   
+                        path:':id',
+                        name:'news-detail',
+                        component: ()=>import('@/views/news/NewsDetail.vue'),
+                        // props: true 把路由参数 :id 作为 prop 传给组件，
+                        // 组件不再依赖 useRoute()，更易复用与测试
+                        props: true,
+                    },
+                ],
+                
             },
-            {
-                path: 'news/:id',
-                name: 'news-detail',
-                component: () => import('@/views/NewsDetail.vue'),
-                // props: true 把路由参数 :id 作为 prop 传给组件，
-                // 组件不再依赖 useRoute()，更易复用与测试
-                props: true,
-            },
+            
         ],
     },
 
@@ -53,7 +57,7 @@ const routes = [
     {
         path: '/:pathMatch(.*)*',
         name: 'not-found',
-        component: () => import('@/views/NotFound.vue'),
+        component: () => import('@/views/error/NotFound.vue'),
     },
 ]
 
@@ -73,6 +77,7 @@ router.beforeEach((to) => {
 
     // 未登录访问需要认证的路由 → 去登录页
     if (to.meta.requiresAuth && !auth.isLoggedIn) {
+        console.log(to.meta.requiresAuth) 
         return { name: 'login' }
     }
 })

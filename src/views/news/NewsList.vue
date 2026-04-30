@@ -5,6 +5,7 @@
     <ul v-else>
         <NewsItem v-for="item in newsList" :key="item.id" :item="item" />
     </ul>
+    <router-view></router-view>
 </template>
 
 <script setup lang="ts">
@@ -16,6 +17,5 @@ import NewsItem from '@/components/NewsItem.vue'
 
 // 把请求逻辑交给 useFetch composable
 const { data: newsList, loading, error, execute } = useFetch(getNewsListApi, [])
-
 onMounted(execute)
 </script>

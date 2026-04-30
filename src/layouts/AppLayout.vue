@@ -4,5 +4,5 @@
 </template>
 
 <script setup lang="ts">
-import AppNav from '@/layouts/AppNav.vue'
+import AppNav from '@/components/AppNav.vue'
 </script>
