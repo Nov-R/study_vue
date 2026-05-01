@@ -77,7 +77,6 @@ router.beforeEach((to) => {
 
     // 未登录访问需要认证的路由 → 去登录页
     if (to.meta.requiresAuth && !auth.isLoggedIn) {
-        console.log(to.meta.requiresAuth) 
         return { name: 'login' }
     }
 })

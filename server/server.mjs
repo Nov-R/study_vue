@@ -17,7 +17,7 @@ server.post('/auth/login', (req, res) => {
     if (username === 'admin' && password === '12345') {
         res.json({ token: 'fake-token-nov-rain' })
     } else {
-        res.status(401).json({ message: '用户名或密码错误' })
+        res.status(401).json({message: '用户名或密码错啦～'})
     }
 })
 

@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const statusMessageMap: Record<number, string> = {
+const statusMessageMap = {
     400: '请求参数错误',
     401: '登录已过期，请重新登录',
     403: '没有权限访问',
@@ -30,7 +30,6 @@ request.interceptors.request.use(async (config) => {
 request.interceptors.response.use(
     response => response.data,
     async error => {
-        console.dir(error)
         const fallback = '获取失败，请稍后重试！！'
         let message = fallback
         if (error.response) {
